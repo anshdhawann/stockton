@@ -36,10 +36,42 @@ export async function getCronJobs() {
   const { data, error } = await supabase
     .from('cron_jobs')
     .select('*')
-    .order('name')
+    .order('created_at', { ascending: false })
   
   if (error) throw error
   return data
+}
+
+export async function createCronJob(payload) {
+  const { data, error } = await supabase
+    .from('cron_jobs')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateCronJob(id, payload) {
+  const { data, error } = await supabase
+    .from('cron_jobs')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteCronJob(id) {
+  const { error } = await supabase
+    .from('cron_jobs')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
 }
 
 export async function getTokenUsage() {
