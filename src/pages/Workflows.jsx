@@ -24,7 +24,13 @@ function Workflows() {
       setWorkflows(list)
     } catch (err) {
       console.error('Error loading workflows:', err)
-      setError(err?.message || 'Failed to load workflows from n8n')
+      const raw = String(err?.message || '')
+      const isNetworkOrCors = raw.includes('Failed to fetch') || raw.includes('NetworkError')
+      setError(
+        isNetworkOrCors
+          ? 'Browser could not reach n8n API (likely CORS). Allow CORS for this site or use a backend proxy.'
+          : raw || 'Failed to load workflows from n8n',
+      )
       setWorkflows([])
     } finally {
       setLoading(false)

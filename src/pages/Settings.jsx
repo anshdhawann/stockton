@@ -28,7 +28,7 @@ function Settings() {
           <label className="text-sm font-medium text-gray-700">n8n Base URL</label>
           <input
             className="input"
-            placeholder="https://your-n8n-instance.com"
+            placeholder="https://your-n8n-instance.com or .../home/workflows"
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
           />
@@ -51,7 +51,7 @@ function Settings() {
         </div>
 
         <p className="text-xs text-gray-500">
-          These values are stored in your browser local storage and used by the Workflows tab to call n8n.
+          These values are stored in browser local storage. Full n8n UI URLs are normalized automatically.
         </p>
       </form>
     </div>

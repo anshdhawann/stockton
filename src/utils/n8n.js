@@ -1,20 +1,47 @@
 const N8N_BASE_URL_KEY = 'stockton_n8n_base_url'
 const N8N_API_KEY_KEY = 'stockton_n8n_api_key'
 
-export function getN8nConfig() {
-  return {
-    baseUrl: localStorage.getItem(N8N_BASE_URL_KEY) || '',
-    apiKey: localStorage.getItem(N8N_API_KEY_KEY) || '',
+function normalizeN8nBaseUrl(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  let parsed
+  try {
+    parsed = new URL(raw)
+  } catch {
+    return raw.replace(/\/+$/, '')
   }
+
+  let path = parsed.pathname.replace(/\/+$/, '')
+
+  const uiSuffixes = ['/home/workflows', '/home', '/workflows']
+  for (const suffix of uiSuffixes) {
+    if (path.toLowerCase().endsWith(suffix)) {
+      path = path.slice(0, -suffix.length) || '/'
+      break
+    }
+  }
+
+  if (path.toLowerCase().endsWith('/api/v1')) {
+    path = path.slice(0, -7) || '/'
+  }
+
+  return path === '/' ? parsed.origin : `${parsed.origin}${path}`
+}
+
+export function getN8nConfig() {
+  const baseUrl = localStorage.getItem(N8N_BASE_URL_KEY) || ''
+  const apiKey = localStorage.getItem(N8N_API_KEY_KEY) || ''
+  return { baseUrl, apiKey }
 }
 
 export function saveN8nConfig({ baseUrl, apiKey }) {
-  localStorage.setItem(N8N_BASE_URL_KEY, String(baseUrl || '').trim())
+  localStorage.setItem(N8N_BASE_URL_KEY, normalizeN8nBaseUrl(baseUrl))
   localStorage.setItem(N8N_API_KEY_KEY, String(apiKey || '').trim())
 }
 
 export async function fetchN8nWorkflows({ baseUrl, apiKey }) {
-  const normalizedBaseUrl = String(baseUrl || '').trim().replace(/\/+$/, '')
+  const normalizedBaseUrl = normalizeN8nBaseUrl(baseUrl)
   const normalizedApiKey = String(apiKey || '').trim()
 
   if (!normalizedBaseUrl || !normalizedApiKey) {
