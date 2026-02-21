@@ -246,7 +246,7 @@ function Cron() {
       <form onSubmit={handleCreate} className="card space-y-4">
         <h3 className="text-base sm:text-lg font-semibold text-gray-900">Create Cron Job</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <input
             className="input"
             placeholder="Job name (e.g., Agent Health Check)"
@@ -269,25 +269,31 @@ function Cron() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input
+            type="number"
+            min="1"
             className="input"
-            placeholder="Cron schedule (e.g., */15 * * * *)"
-            value={form.schedule}
-            onChange={(e) => setForm({ ...form, schedule: e.target.value })}
+            placeholder="Number"
+            value={cronToParts(form.schedule).count}
+            onChange={(e) => {
+              const count = Math.max(1, Number(e.target.value || 1))
+              const unit = cronToParts(form.schedule).unit
+              setForm({ ...form, schedule: partsToCron(count, unit) })
+            }}
           />
           <select
             className="input"
-            value=""
-            onChange={(e) => e.target.value && setForm({ ...form, schedule: e.target.value })}
+            value={cronToParts(form.schedule).unit}
+            onChange={(e) => {
+              const count = cronToParts(form.schedule).count
+              setForm({ ...form, schedule: partsToCron(count, e.target.value) })
+            }}
           >
-            <option value="">Quick presets</option>
-            {SCHEDULE_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label} - {preset.value}
-              </option>
-            ))}
+            <option value="minutes">Minutes</option>
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
           </select>
         </div>
-        <p className="text-xs text-gray-500">Schedule preview: {humanizeCron(form.schedule)}</p>
+        <p className="text-xs text-gray-500">Schedule preview: {humanizeCron(form.schedule)} ({form.schedule})</p>
 
         <input
           className="input"
@@ -342,7 +348,7 @@ function Cron() {
               <div key={job.id} className="p-4 flex flex-col gap-3">
                 {editingJobId === job.id ? (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <input
                         className="input"
                         value={editForm.name}
@@ -363,24 +369,33 @@ function Cron() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <input
+                        type="number"
+                        min="1"
                         className="input"
-                        value={editForm.schedule}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, schedule: e.target.value }))}
+                        placeholder="Number"
+                        value={cronToParts(editForm.schedule).count}
+                        onChange={(e) => {
+                          const count = Math.max(1, Number(e.target.value || 1))
+                          const unit = cronToParts(editForm.schedule).unit
+                          setEditForm((prev) => ({ ...prev, schedule: partsToCron(count, unit) }))
+                        }}
                       />
                       <select
                         className="input"
-                        value=""
-                        onChange={(e) => e.target.value && setEditForm((prev) => ({ ...prev, schedule: e.target.value }))}
+                        value={cronToParts(editForm.schedule).unit}
+                        onChange={(e) => {
+                          const count = cronToParts(editForm.schedule).count
+                          setEditForm((prev) => ({ ...prev, schedule: partsToCron(count, e.target.value) }))
+                        }}
                       >
-                        <option value="">Quick presets</option>
-                        {SCHEDULE_PRESETS.map((preset) => (
-                          <option key={preset.value} value={preset.value}>
-                            {preset.label} - {preset.value}
-                          </option>
-                        ))}
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
                       </select>
                     </div>
-                    <p className="text-xs text-gray-500">Schedule preview: {humanizeCron(editForm.schedule)}</p>
+                    <p className="text-xs text-gray-500">
+                      Schedule preview: {humanizeCron(editForm.schedule)} ({editForm.schedule})
+                    </p>
                     <input
                       className="input"
                       value={editForm.command}
@@ -538,6 +553,28 @@ function toJobName(command) {
     .replace(/\b\w/g, (m) => m.toUpperCase())
 }
 
+function cronToParts(cron) {
+  const value = String(cron || '').trim()
+  let match = value.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/)
+  if (match) return { count: Math.max(1, Number(match[1])), unit: 'minutes' }
+
+  match = value.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/)
+  if (match) return { count: Math.max(1, Number(match[1])), unit: 'hours' }
+
+  match = value.match(/^0\s+0\s+\*\/(\d+)\s+\*\s+\*$/)
+  if (match) return { count: Math.max(1, Number(match[1])), unit: 'days' }
+
+  if (value === '0 * * * *') return { count: 1, unit: 'hours' }
+  return { count: 15, unit: 'minutes' }
+}
+
+function partsToCron(count, unit) {
+  const safeCount = Math.max(1, Number(count || 1))
+  if (unit === 'hours') return `0 */${safeCount} * * *`
+  if (unit === 'days') return `0 0 */${safeCount} * *`
+  return `*/${safeCount} * * * *`
+}
+
 function humanizeCron(cron) {
   const value = String(cron || '').trim()
   if (!value) return 'Not set'
@@ -552,6 +589,9 @@ function humanizeCron(cron) {
 
   match = value.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/)
   if (match) return `Every ${match[1]} hour${match[1] === '1' ? '' : 's'}`
+
+  match = value.match(/^0\s+0\s+\*\/(\d+)\s+\*\s+\*$/)
+  if (match) return `Every ${match[1]} day${match[1] === '1' ? '' : 's'}`
 
   return value
 }
