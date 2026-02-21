@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { MessageSquare, Send, RefreshCw } from 'lucide-react'
+import { MessageSquare, Send, RefreshCw, ArrowUpRight } from 'lucide-react'
 import { getAgents, supabase } from '../utils/supabase'
 
 const STOCKTON_CHAT_WEBHOOK_URL =
@@ -10,6 +10,7 @@ function ChatArena() {
   const [messages, setMessages] = useState([])
   const [agents, setAgents] = useState([])
   const [input, setInput] = useState('')
+  const [replyTarget, setReplyTarget] = useState(null)
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -89,6 +90,7 @@ function ChatArena() {
       message_id: optimisticId,
       content: message,
       agent_id: 'ansh',
+      reply_to: replyTarget?.id || null,
       message_type: 'chat',
       status: 'active',
       created_at: new Date().toISOString(),
@@ -107,6 +109,7 @@ function ChatArena() {
         body: JSON.stringify({
           message,
           agent_id: 'ansh',
+          reply_to: replyTarget?.id || null,
           thread_id: 'stockton-chat',
         }),
       })
@@ -128,12 +131,36 @@ function ChatArena() {
             : msg,
         ),
       )
+      setReplyTarget(null)
     } catch (error) {
       console.error('Error sending message:', error)
       // Remove optimistic row on failure so UI stays accurate.
       setMessages((prev) => prev.filter((msg) => msg.id !== optimisticId))
       setInput(message)
     }
+  }
+
+  function setReplyForMessage(msg) {
+    const agentId = String(msg.agent_id || '').trim()
+    const displayName = String(msg.agents?.name || msg.agent_id || 'agent').trim()
+    const mention = agentId ? `@${agentId}` : ''
+
+    setReplyTarget({
+      id: msg.id,
+      agentId,
+      displayName,
+      preview: String(msg.content || '').slice(0, 80),
+    })
+
+    if (mention) {
+      setInput((prev) => {
+        const trimmed = prev.trim()
+        if (!trimmed) return `${mention} `
+        if (trimmed.toLowerCase().startsWith(`${mention.toLowerCase()} `)) return prev
+        return `${mention} ${trimmed}`
+      })
+    }
+    inputRef.current?.focus()
   }
 
   function addMention(agentId) {
@@ -197,8 +224,17 @@ function ChatArena() {
           messages.map((msg) => (
             <div 
               key={msg.id} 
-              className={`p-4 rounded-lg border ${getMessageStyle(msg.message_type)}`}
+              className={`p-4 rounded-lg border relative ${getMessageStyle(msg.message_type)}`}
             >
+              <button
+                type="button"
+                onClick={() => setReplyForMessage(msg)}
+                className="absolute top-3 right-3 p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                title={`Reply to ${msg.agents?.name || msg.agent_id || 'message'}`}
+                aria-label={`Reply to ${msg.agents?.name || msg.agent_id || 'message'}`}
+              >
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
               <div className="flex items-start gap-3">
                 <span className="text-2xl">{msg.agents?.emoji || '👤'}</span>
                 <div className="flex-1">
@@ -246,7 +282,22 @@ function ChatArena() {
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="mt-4 flex gap-2">
+      <form onSubmit={sendMessage} className="mt-4 flex flex-col gap-2">
+        {replyTarget && (
+          <div className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-900">
+            <span>
+              Replying to <strong>{replyTarget.displayName}</strong>: "{replyTarget.preview}"
+            </span>
+            <button
+              type="button"
+              className="text-primary hover:underline"
+              onClick={() => setReplyTarget(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        <div className="flex gap-2">
         <input
           ref={inputRef}
           type="text"
@@ -259,6 +310,7 @@ function ChatArena() {
           <Send className="w-4 h-4" />
           Send
         </button>
+        </div>
       </form>
     </div>
   )
