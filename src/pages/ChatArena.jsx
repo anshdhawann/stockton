@@ -265,7 +265,7 @@ function ChatArena() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-180px)] flex flex-col">
+    <div className="h-[calc(100dvh-200px)] min-h-[520px] max-h-[900px] overflow-hidden flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Chat Arena</h2>
@@ -280,8 +280,8 @@ function ChatArena() {
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-8 xl:col-span-9 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+        <div className="lg:col-span-8 xl:col-span-9 min-h-0 h-full flex flex-col overflow-hidden">
           {/* Messages */}
           <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-xl border border-border p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 ? (
@@ -381,8 +381,8 @@ function ChatArena() {
           </form>
         </div>
 
-        <aside className="lg:col-span-4 xl:col-span-3 min-h-0">
-          <div className="card h-full max-h-[40vh] lg:max-h-none overflow-y-auto p-4">
+        <aside className="lg:col-span-4 xl:col-span-3 min-h-0 h-full overflow-hidden">
+          <div className="card h-full max-h-[30vh] lg:max-h-none overflow-y-auto p-4">
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-gray-900">Agents Working Now</h3>
