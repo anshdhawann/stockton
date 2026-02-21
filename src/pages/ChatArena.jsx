@@ -24,6 +24,20 @@ function ChatArena() {
     })
   }, [agents])
 
+  function mergeMessages(existing, incoming) {
+    const list = Array.isArray(incoming) ? incoming : [incoming]
+    const map = new Map((existing || []).map((item) => [item.id, item]))
+    for (const item of list) {
+      if (!item || typeof item.id === 'undefined') continue
+      map.set(item.id, { ...(map.get(item.id) || {}), ...item })
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      const aTime = new Date(a.created_at || 0).getTime()
+      const bTime = new Date(b.created_at || 0).getTime()
+      return aTime - bTime
+    })
+  }
+
   useEffect(() => {
     loadData()
     
@@ -35,7 +49,7 @@ function ChatArena() {
         schema: 'public', 
         table: 'chat_arena' 
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new])
+        setMessages((prev) => mergeMessages(prev, payload.new))
       })
       .subscribe()
     
@@ -54,6 +68,25 @@ function ChatArena() {
   }, [])
 
   useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadMessages()
+    }, 5000)
+
+    function onFocus() {
+      loadMessages()
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [])
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -66,7 +99,7 @@ function ChatArena() {
         .limit(100)
       
       if (error) throw error
-      setMessages(data || [])
+      setMessages((prev) => mergeMessages(prev, data || []))
     } catch (error) {
       console.error('Error loading messages:', error)
     }
