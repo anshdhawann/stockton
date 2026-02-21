@@ -2,6 +2,10 @@
 
 Real-time dashboard for tasks, agents, cron jobs, workflows, and chat.
 
+## Runbook
+
+Operational details, agent mapping, and maintenance steps are documented in `RUNBOOK.md`.
+
 ## Stack
 
 - React 18
