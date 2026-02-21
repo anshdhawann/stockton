@@ -51,7 +51,7 @@ function Settings() {
         </div>
 
         <p className="text-xs text-gray-500">
-          These values are stored in browser local storage. Full n8n UI URLs are normalized automatically.
+          These values are stored in browser local storage. Workflows can load via secure proxy; direct URL/API key are optional fallback.
         </p>
       </form>
     </div>

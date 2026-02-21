@@ -62,7 +62,7 @@ function Workflows() {
 
       <div className="card p-4 sm:p-5 space-y-3">
         <p className="text-sm text-gray-600">
-          Connected n8n: <span className="font-medium text-gray-900">{config.baseUrl || 'Not configured'}</span>
+          Connected n8n: <span className="font-medium text-gray-900">{config.baseUrl || 'Proxy mode (n8n.anshdhawan.cloud)'}</span>
         </p>
         <input
           className="input"

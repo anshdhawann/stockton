@@ -1,5 +1,6 @@
 const N8N_BASE_URL_KEY = 'stockton_n8n_base_url'
 const N8N_API_KEY_KEY = 'stockton_n8n_api_key'
+const N8N_WORKFLOWS_PROXY_URL = 'https://n8n.anshdhawan.cloud/webhook/stockton-workflows'
 
 function normalizeN8nBaseUrl(value) {
   const raw = String(value || '').trim()
@@ -41,11 +42,32 @@ export function saveN8nConfig({ baseUrl, apiKey }) {
 }
 
 export async function fetchN8nWorkflows({ baseUrl, apiKey }) {
+  try {
+    const proxyResponse = await fetch(N8N_WORKFLOWS_PROXY_URL, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+
+    if (proxyResponse.ok) {
+      const proxyPayload = await proxyResponse.json()
+      const proxyWorkflows = Array.isArray(proxyPayload?.data)
+        ? proxyPayload.data
+        : Array.isArray(proxyPayload)
+          ? proxyPayload
+          : []
+      return proxyWorkflows
+    }
+  } catch {
+    // Fall through to direct API mode if proxy is unavailable.
+  }
+
   const normalizedBaseUrl = normalizeN8nBaseUrl(baseUrl)
   const normalizedApiKey = String(apiKey || '').trim()
 
   if (!normalizedBaseUrl || !normalizedApiKey) {
-    throw new Error('Missing n8n URL or API key')
+    throw new Error('Workflows proxy unavailable and direct n8n URL/API key are missing')
   }
 
   const url = `${normalizedBaseUrl}/api/v1/workflows?limit=250`
