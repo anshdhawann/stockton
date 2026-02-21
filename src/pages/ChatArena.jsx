@@ -189,7 +189,7 @@ function ChatArena() {
             className="text-xs px-2 py-1 rounded-full border border-border bg-white hover:bg-gray-100 text-gray-700"
             title={`Mention ${agent.id}`}
           >
-            {agent.emoji ? `${agent.emoji} ` : ''}@{agent.id}
+            {agent.emoji ? `${agent.emoji} ` : ''}@{getAgentMentionLabel(agent)}
           </button>
         ))}
       </div>
@@ -211,6 +211,26 @@ function ChatArena() {
       </form>
     </div>
   )
+}
+
+function getAgentMentionLabel(agent) {
+  const name = String(agent?.name || '').trim()
+  if (name) {
+    const cleaned = name
+      .replace(/^[^A-Za-z0-9]+/, '')
+      .split(' - ')[0]
+      .trim()
+    if (cleaned) return cleaned
+  }
+  return toTitleCase(String(agent?.id || 'agent'))
+}
+
+function toTitleCase(value) {
+  return value
+    .split(/[_-]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 export default ChatArena
