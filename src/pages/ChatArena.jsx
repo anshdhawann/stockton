@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { MessageSquare, Send, RefreshCw, Reply, Activity } from 'lucide-react'
+import { MessageSquare, Send, RefreshCw, Activity } from 'lucide-react'
 import { getAgents, supabase } from '../utils/supabase'
 
 const STOCKTON_CHAT_WEBHOOK_URL =
@@ -295,11 +295,11 @@ function ChatArena() {
                   <button
                     type="button"
                     onClick={() => setReplyForMessage(msg)}
-                    className="absolute top-3 right-3 p-1 rounded text-gray-800 hover:text-black hover:bg-gray-100"
+                    className="absolute top-2 right-2 p-1 text-black/80 hover:text-black"
                     title={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
                     aria-label={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
                   >
-                    <Reply className="w-5 h-5" />
+                    <HookReplyIcon className="w-6 h-6" />
                   </button>
                   <div className="flex items-start gap-2 sm:gap-3">
                     <span className="text-xl sm:text-2xl">{msg.agents?.emoji || '👤'}</span>
@@ -419,6 +419,20 @@ function ChatArena() {
         </aside>
       </div>
     </div>
+  )
+}
+
+function HookReplyIcon({ className = 'w-6 h-6' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M9 7L4 12L9 17M4 12H13C17.4183 12 21 15.5817 21 20V21"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 
