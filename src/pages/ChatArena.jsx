@@ -232,15 +232,15 @@ function ChatArena() {
   }
 
   return (
-    <div className="h-[calc(100vh-200px)] flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+    <div className="min-h-[calc(100dvh-180px)] flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Chat Arena</h2>
-          <p className="text-gray-500 mt-1">Real-time agent communication</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Chat Arena</h2>
+          <p className="text-sm sm:text-base text-gray-500 mt-1">Real-time agent communication</p>
         </div>
         <button 
           onClick={loadData}
-          className="btn-secondary flex items-center gap-2"
+          className="btn-secondary w-full sm:w-auto flex items-center justify-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
           Refresh
@@ -250,7 +250,7 @@ function ChatArena() {
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-8 xl:col-span-9 min-h-0 flex flex-col">
           {/* Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-xl border border-border p-4 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-xl border border-border p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -258,10 +258,7 @@ function ChatArena() {
               </div>
             ) : (
               messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`p-4 rounded-lg border relative ${getMessageStyle(msg.message_type)}`}
-                >
+                <div key={msg.id} className={`p-3 sm:p-4 rounded-lg border relative ${getMessageStyle(msg.message_type)}`}>
                   <button
                     type="button"
                     onClick={() => setReplyForMessage(msg)}
@@ -271,22 +268,21 @@ function ChatArena() {
                   >
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">{msg.agents?.emoji || '👤'}</span>
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <span className="text-xl sm:text-2xl">{msg.agents?.emoji || '👤'}</span>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-gray-900">
+                      <div className="flex flex-wrap items-center gap-2 mb-1 pr-8 sm:pr-0">
+                        <span className="font-semibold text-sm sm:text-base text-gray-900">
                           {formatAgentDisplayName(msg.agents?.name || msg.agent_id)}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-[11px] sm:text-xs text-gray-500">
                           {new Date(msg.created_at).toLocaleTimeString()}
                         </span>
                         {msg.priority === 1 && (
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Urgent</span>
                         )}
                       </div>
-
-                      <p className="text-gray-800">{msg.content}</p>
+                      <p className="text-sm sm:text-base text-gray-800 break-words">{msg.content}</p>
 
                       {msg.context && Object.keys(msg.context).length > 0 && (
                         <div className="mt-2 text-xs text-gray-500 bg-white/50 p-2 rounded">
@@ -302,26 +298,28 @@ function ChatArena() {
           </div>
 
           {/* Agent quick mentions */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-500 mr-1">Quick mentions:</span>
-            {sortedAgents.map((agent) => (
-              <button
-                key={agent.id}
-                type="button"
-                onClick={() => addMention(agent.id)}
-                className="text-xs px-2 py-1 rounded-full border border-border bg-white hover:bg-gray-100 text-gray-700"
-                title={`Mention ${agent.id}`}
-              >
-                {agent.emoji ? `${agent.emoji} ` : ''}@{getAgentMentionLabel(agent)}
-              </button>
-            ))}
+          <div className="mt-3 space-y-2">
+            <span className="block text-xs font-medium text-gray-500">Quick mentions:</span>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {sortedAgents.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => addMention(agent.id)}
+                  className="shrink-0 text-xs px-2 py-1 rounded-full border border-border bg-white hover:bg-gray-100 text-gray-700"
+                  title={`Mention ${agent.id}`}
+                >
+                  {agent.emoji ? `${agent.emoji} ` : ''}@{getAgentMentionLabel(agent)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Input */}
           <form onSubmit={sendMessage} className="mt-4 flex flex-col gap-2">
             {replyTarget && (
-              <div className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-900">
-                <span>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs px-3 py-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-900">
+                <span className="break-words">
                   Replying to <strong>{replyTarget.displayName}</strong>: "{replyTarget.preview}"
                 </span>
                 <button
@@ -333,7 +331,7 @@ function ChatArena() {
                 </button>
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 ref={inputRef}
                 type="text"
@@ -342,7 +340,7 @@ function ChatArena() {
                 placeholder="Send message to all agents..."
                 className="flex-1 input"
               />
-              <button type="submit" className="btn-primary flex items-center gap-2">
+              <button type="submit" className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2">
                 <Send className="w-4 h-4" />
                 Send
               </button>
@@ -351,7 +349,7 @@ function ChatArena() {
         </div>
 
         <aside className="lg:col-span-4 xl:col-span-3 min-h-0">
-          <div className="card h-full overflow-y-auto p-4">
+          <div className="card h-full max-h-[40vh] lg:max-h-none overflow-y-auto p-4">
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-gray-900">Agents Working Now</h3>
