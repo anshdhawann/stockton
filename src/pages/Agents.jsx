@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import { Users, Activity, MessageSquare, Plus, Minus } from 'lucide-react'
-import { getAgents, supabase } from '../utils/supabase'
+import { getAgents, supabase, updateAgentMds } from '../utils/supabase'
 
 function Agents() {
   const [agents, setAgents] = useState([])
   const [loading, setLoading] = useState(true)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [editingAgent, setEditingAgent] = useState(null)
+  const [mdForm, setMdForm] = useState({
+    identity_md: '',
+    soul_md: '',
+    user_md: '',
+    tools_md: '',
+    agents_md: '',
+  })
 
   useEffect(() => {
     loadAgents()
@@ -45,6 +56,51 @@ function Agents() {
     if (load >= 7) return 'text-orange-600 bg-orange-50'
     if (load >= 4) return 'text-yellow-600 bg-yellow-50'
     return 'text-green-600 bg-green-50'
+  }
+
+  const mdFields = [
+    { key: 'identity_md', label: 'identity.md' },
+    { key: 'soul_md', label: 'soul.md' },
+    { key: 'user_md', label: 'user.md' },
+    { key: 'tools_md', label: 'tools.md' },
+    { key: 'agents_md', label: 'agents.md' },
+  ]
+
+  function openMdEditor(agent) {
+    setEditingAgent(agent)
+    setMdForm({
+      identity_md: agent.identity_md || '',
+      soul_md: agent.soul_md || '',
+      user_md: agent.user_md || '',
+      tools_md: agent.tools_md || '',
+      agents_md: agent.agents_md || '',
+    })
+    setSaveError('')
+    setEditorOpen(true)
+  }
+
+  function closeMdEditor() {
+    if (saving) return
+    setEditorOpen(false)
+    setEditingAgent(null)
+    setSaveError('')
+  }
+
+  async function saveMdEditor() {
+    if (!editingAgent?.id) return
+    try {
+      setSaving(true)
+      setSaveError('')
+      await updateAgentMds(editingAgent.id, mdForm)
+      setEditorOpen(false)
+      setEditingAgent(null)
+      await loadAgents()
+    } catch (error) {
+      console.error('Error saving md fields:', error)
+      setSaveError(error?.message || 'Failed to save agent markdown files')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) {
@@ -122,7 +178,10 @@ function Agents() {
               <button className="flex-1 text-xs bg-primary-50 hover:bg-primary-100 text-primary py-2 rounded">
                 Logs
               </button>
-              <button className="flex-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded">
+              <button
+                onClick={() => openMdEditor(agent)}
+                className="flex-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded"
+              >
                 Edit .md
               </button>
             </div>
@@ -152,6 +211,64 @@ function Agents() {
           </div>
         </div>
       </div>
+
+      {editorOpen && editingAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
+          <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-white rounded-xl border border-gray-200 shadow-xl p-4 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900">Edit Agent Markdown</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  Agent: {editingAgent.name} ({editingAgent.id})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeMdEditor}
+                className="px-3 py-2 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
+                disabled={saving}
+              >
+                Close
+              </button>
+            </div>
+
+            {mdFields.map((field) => (
+              <div key={field.key} className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                <textarea
+                  value={mdForm[field.key]}
+                  onChange={(e) => setMdForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  rows={6}
+                  className="w-full rounded-lg border border-gray-300 p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-300"
+                />
+              </div>
+            ))}
+
+            {saveError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{saveError}</div>
+            ) : null}
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeMdEditor}
+                className="px-4 py-2 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveMdEditor}
+                className="px-4 py-2 rounded-lg text-sm bg-primary text-white hover:bg-primary-700 disabled:opacity-60"
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save to OpenClaw'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -124,6 +124,18 @@ export async function updateAgentMd(agentId, field, content) {
   return data
 }
 
+export async function updateAgentMds(agentId, payload) {
+  const { data, error } = await supabase
+    .from('agents')
+    .update(payload)
+    .eq('id', agentId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function getSettings() {
   const { data, error } = await supabase
     .from('settings')
