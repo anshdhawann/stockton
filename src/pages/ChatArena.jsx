@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { MessageSquare, Send, RefreshCw, ArrowUpRight, Activity } from 'lucide-react'
+import { MessageSquare, Send, RefreshCw, Reply, Activity } from 'lucide-react'
 import { getAgents, supabase } from '../utils/supabase'
 
 const STOCKTON_CHAT_WEBHOOK_URL =
@@ -295,11 +295,11 @@ function ChatArena() {
                   <button
                     type="button"
                     onClick={() => setReplyForMessage(msg)}
-                    className="absolute top-3 right-3 p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    className="absolute top-3 right-3 p-1 rounded text-gray-800 hover:text-black hover:bg-gray-100"
                     title={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
                     aria-label={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
                   >
-                    <ArrowUpRight className="w-4 h-4" />
+                    <Reply className="w-5 h-5" />
                   </button>
                   <div className="flex items-start gap-2 sm:gap-3">
                     <span className="text-xl sm:text-2xl">{msg.agents?.emoji || '👤'}</span>
