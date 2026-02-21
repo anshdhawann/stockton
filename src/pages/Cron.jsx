@@ -17,6 +17,15 @@ function Cron() {
   const [error, setError] = useState('')
   const [copilotPrompt, setCopilotPrompt] = useState('')
   const [agentFilter, setAgentFilter] = useState('all')
+  const [editingJobId, setEditingJobId] = useState(null)
+  const [editForm, setEditForm] = useState({
+    name: '',
+    schedule: '',
+    command: '',
+    description: '',
+    created_by: '',
+    enabled: true,
+  })
 
   const [form, setForm] = useState({
     name: '',
@@ -117,6 +126,57 @@ function Cron() {
     } catch (err) {
       console.error('Error deleting cron job:', err)
       setError(err?.message || 'Failed to delete cron job')
+    }
+  }
+
+  function startEdit(job) {
+    setEditingJobId(job.id)
+    setEditForm({
+      name: job.name || '',
+      schedule: job.schedule || '',
+      command: job.command || '',
+      description: job.description || '',
+      created_by: job.created_by || '',
+      enabled: !!job.enabled,
+    })
+  }
+
+  function cancelEdit() {
+    setEditingJobId(null)
+    setEditForm({
+      name: '',
+      schedule: '',
+      command: '',
+      description: '',
+      created_by: '',
+      enabled: true,
+    })
+  }
+
+  async function saveEdit(jobId) {
+    if (!editForm.name.trim() || !editForm.schedule.trim() || !editForm.command.trim()) {
+      setError('Name, cron schedule, and command are required.')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setError('')
+      await updateCronJob(jobId, {
+        name: editForm.name.trim(),
+        schedule: editForm.schedule.trim(),
+        command: editForm.command.trim(),
+        description: editForm.description.trim() || null,
+        created_by: editForm.created_by || null,
+        enabled: editForm.enabled,
+      })
+      await loadJobsOnly()
+      cancelEdit()
+    } catch (err) {
+      console.error('Error editing cron job:', err)
+      setError(err?.message || 'Failed to edit cron job')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -279,39 +339,113 @@ function Cron() {
           <div className="divide-y divide-border">
             {filteredJobs.map((job) => (
               <div key={job.id} className="p-4 flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{job.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">ID: {job.id} • Agent: {job.created_by || 'Unassigned'}</p>
+                {editingJobId === job.id ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        className="input"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                      />
+                      <select
+                        className="input"
+                        value={editForm.created_by}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, created_by: e.target.value }))}
+                      >
+                        <option value="">Select agent</option>
+                        {agents.map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        className="input"
+                        value={editForm.schedule}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, schedule: e.target.value }))}
+                      />
+                      <select
+                        className="input"
+                        value=""
+                        onChange={(e) => e.target.value && setEditForm((prev) => ({ ...prev, schedule: e.target.value }))}
+                      >
+                        <option value="">Quick presets</option>
+                        {SCHEDULE_PRESETS.map((preset) => (
+                          <option key={preset.value} value={preset.value}>
+                            {preset.label} - {preset.value}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <input
+                      className="input"
+                      value={editForm.command}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, command: e.target.value }))}
+                    />
+                    <textarea
+                      className="input min-h-[88px]"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                    />
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={editForm.enabled}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, enabled: e.target.checked }))}
+                      />
+                      Enabled
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button className="btn-primary text-xs" onClick={() => saveEdit(job.id)} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save'}
+                      </button>
+                      <button className="btn-secondary text-xs" onClick={cancelEdit}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${job.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {job.enabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{job.name}</p>
+                        <p className="text-xs text-gray-500 mt-1">ID: {job.id} • Agent: {job.created_by || 'Unassigned'}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${job.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                        {job.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-700">
-                  <span className="inline-flex items-center gap-1">
-                    <Clock3 className="w-4 h-4" />
-                    {job.schedule}
-                  </span>
-                  <span className="font-mono text-xs bg-gray-50 border border-border rounded px-2 py-1">{job.command}</span>
-                </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-700">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 className="w-4 h-4" />
+                        {job.schedule}
+                      </span>
+                      <span className="font-mono text-xs bg-gray-50 border border-border rounded px-2 py-1">{job.command}</span>
+                    </div>
 
-                {job.description && <p className="text-sm text-gray-600">{job.description}</p>}
+                    {job.description && <p className="text-sm text-gray-600">{job.description}</p>}
 
-                <div className="text-xs text-gray-500">
-                  Last run: {formatDate(job.last_run_at)} • Next run: {formatDate(job.next_run_at)}
-                </div>
+                    <div className="text-xs text-gray-500">
+                      Last run: {formatDate(job.last_run_at)} • Next run: {formatDate(job.next_run_at)}
+                    </div>
 
-                <div className="flex items-center gap-2">
-                  <button className="btn-secondary text-xs" onClick={() => toggleEnabled(job)}>
-                    {job.enabled ? 'Disable' : 'Enable'}
-                  </button>
-                  <button className="btn-secondary text-xs flex items-center gap-1" onClick={() => removeJob(job)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete
-                  </button>
-                </div>
+                    <div className="flex items-center gap-2">
+                      <button className="btn-secondary text-xs" onClick={() => startEdit(job)}>
+                        Edit
+                      </button>
+                      <button className="btn-secondary text-xs" onClick={() => toggleEnabled(job)}>
+                        {job.enabled ? 'Disable' : 'Enable'}
+                      </button>
+                      <button className="btn-secondary text-xs flex items-center gap-1" onClick={() => removeJob(job)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
