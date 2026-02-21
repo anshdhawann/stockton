@@ -142,7 +142,7 @@ function ChatArena() {
 
   function setReplyForMessage(msg) {
     const agentId = String(msg.agent_id || '').trim()
-    const displayName = String(msg.agents?.name || msg.agent_id || 'agent').trim()
+    const displayName = formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'agent')
     const mention = agentId ? `@${agentId}` : ''
 
     setReplyTarget({
@@ -230,8 +230,8 @@ function ChatArena() {
                 type="button"
                 onClick={() => setReplyForMessage(msg)}
                 className="absolute top-3 right-3 p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                title={`Reply to ${msg.agents?.name || msg.agent_id || 'message'}`}
-                aria-label={`Reply to ${msg.agents?.name || msg.agent_id || 'message'}`}
+                title={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
+                aria-label={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
               >
                 <ArrowUpRight className="w-4 h-4" />
               </button>
@@ -240,7 +240,7 @@ function ChatArena() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-gray-900">
-                      {msg.agents?.name || msg.agent_id}
+                      {formatAgentDisplayName(msg.agents?.name || msg.agent_id)}
                     </span>
                     <span className="text-xs text-gray-500">
                       {new Date(msg.created_at).toLocaleTimeString()}
@@ -334,6 +334,12 @@ function toTitleCase(value) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+function formatAgentDisplayName(value) {
+  const text = String(value || '').trim()
+  if (!text) return 'Agent'
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 export default ChatArena
