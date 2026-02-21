@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Clock3, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Bot, Clock3, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { createCronJob, deleteCronJob, getAgents, getCronJobs, supabase, updateCronJob } from '../utils/supabase'
 
 const SCHEDULE_PRESETS = [
@@ -15,6 +15,8 @@ function Cron() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [copilotPrompt, setCopilotPrompt] = useState('')
+  const [agentFilter, setAgentFilter] = useState('all')
 
   const [form, setForm] = useState({
     name: '',
@@ -119,6 +121,15 @@ function Cron() {
   }
 
   const activeCount = useMemo(() => jobs.filter((job) => job.enabled).length, [jobs])
+  const filteredJobs = useMemo(
+    () => (agentFilter === 'all' ? jobs : jobs.filter((job) => String(job.created_by || '') === agentFilter)),
+    [jobs, agentFilter],
+  )
+
+  function runCopilot() {
+    const suggestion = parseCronPrompt(copilotPrompt, agents)
+    setForm((prev) => ({ ...prev, ...suggestion }))
+  }
 
   if (loading) {
     return (
@@ -152,6 +163,25 @@ function Cron() {
           {error}
         </div>
       )}
+
+      <div className="card space-y-3">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <Bot className="w-4 h-4" />
+          Cron Copilot
+        </h3>
+        <textarea
+          className="input min-h-[88px]"
+          placeholder="Example: Every 2 hours run health check for @andrej and save summary"
+          value={copilotPrompt}
+          onChange={(e) => setCopilotPrompt(e.target.value)}
+        />
+        <div className="flex items-center gap-2">
+          <button type="button" className="btn-secondary" onClick={runCopilot}>
+            Fill Form From Prompt
+          </button>
+          <p className="text-xs text-gray-500">Keeps agent selection + schedule editable after fill.</p>
+        </div>
+      </div>
 
       <form onSubmit={handleCreate} className="card space-y-4">
         <h3 className="text-base sm:text-lg font-semibold text-gray-900">Create Cron Job</h3>
@@ -228,14 +258,26 @@ function Cron() {
       </form>
 
       <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">Existing Jobs</h3>
+          <select
+            className="input text-sm sm:w-[280px]"
+            value={agentFilter}
+            onChange={(e) => setAgentFilter(e.target.value)}
+          >
+            <option value="all">All agents</option>
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}
+              </option>
+            ))}
+          </select>
         </div>
-        {jobs.length === 0 ? (
+        {filteredJobs.length === 0 ? (
           <div className="p-6 text-sm text-gray-500">No cron jobs found.</div>
         ) : (
           <div className="divide-y divide-border">
-            {jobs.map((job) => (
+            {filteredJobs.map((job) => (
               <div key={job.id} className="p-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -293,6 +335,70 @@ function formatDate(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
   return date.toLocaleString()
+}
+
+function parseCronPrompt(prompt, agents) {
+  const text = String(prompt || '').trim()
+  if (!text) return {}
+
+  const lower = text.toLowerCase()
+  const byId = detectAgentById(lower, agents)
+  const byName = detectAgentByName(lower, agents)
+  const createdBy = byId || byName || ''
+  const schedule = detectSchedule(lower)
+  const command = detectCommand(lower)
+
+  return {
+    created_by: createdBy,
+    schedule,
+    command,
+    name: toJobName(command),
+    description: text,
+  }
+}
+
+function detectAgentById(lower, agents) {
+  const mention = lower.match(/@([a-z0-9_-]+)/)
+  if (!mention) return ''
+  const id = mention[1]
+  const found = (agents || []).find((a) => String(a.id || '').toLowerCase() === id)
+  return found?.id || ''
+}
+
+function detectAgentByName(lower, agents) {
+  const found = (agents || []).find((agent) => lower.includes(String(agent.name || '').toLowerCase()))
+  return found?.id || ''
+}
+
+function detectSchedule(lower) {
+  let match = lower.match(/every\s+(\d+)\s*(minute|min|minutes|mins)\b/)
+  if (match) return `*/${Math.max(1, Number(match[1]))} * * * *`
+
+  match = lower.match(/every\s+(\d+)\s*(hour|hours|hr|hrs)\b/)
+  if (match) return `0 */${Math.max(1, Number(match[1]))} * * *`
+
+  if (lower.includes('hourly')) return '0 * * * *'
+  if (lower.includes('daily')) return '0 9 * * *'
+  if (lower.includes('weekly')) return '0 9 * * 1'
+  if (lower.includes('weekdays')) return '0 9 * * 1-5'
+  if (lower.includes('every 15')) return '*/15 * * * *'
+  if (lower.includes('every 5')) return '*/5 * * * *'
+  return '*/15 * * * *'
+}
+
+function detectCommand(lower) {
+  if (lower.includes('health')) return 'check_agent_status()'
+  if (lower.includes('report') || lower.includes('summary')) return 'generate_daily_report()'
+  if (lower.includes('backup')) return 'run_backup()'
+  if (lower.includes('sync')) return 'run_sync()'
+  return 'run_agent_task()'
+}
+
+function toJobName(command) {
+  return String(command || 'agent_job')
+    .replace(/\(\)/g, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase())
 }
 
 export default Cron
