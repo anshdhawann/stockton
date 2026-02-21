@@ -68,7 +68,8 @@ function App() {
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">Stockton</h1>
-                <p className="hidden sm:block text-xs text-gray-500">Claw runco.</p>
+                <p className="hidden sm:block text-xs text-gray-500">Agent Swarm Control</p>
+                <p className="hidden sm:block text-xs text-gray-500">A Claw Enterprise</p>
               </div>
             </NavLink>
 
