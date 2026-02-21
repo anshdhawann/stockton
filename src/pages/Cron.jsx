@@ -287,6 +287,7 @@ function Cron() {
             ))}
           </select>
         </div>
+        <p className="text-xs text-gray-500">Schedule preview: {humanizeCron(form.schedule)}</p>
 
         <input
           className="input"
@@ -379,6 +380,7 @@ function Cron() {
                         ))}
                       </select>
                     </div>
+                    <p className="text-xs text-gray-500">Schedule preview: {humanizeCron(editForm.schedule)}</p>
                     <input
                       className="input"
                       value={editForm.command}
@@ -421,8 +423,9 @@ function Cron() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-700">
                       <span className="inline-flex items-center gap-1">
                         <Clock3 className="w-4 h-4" />
-                        {job.schedule}
+                        {humanizeCron(job.schedule)}
                       </span>
+                      <span className="font-mono text-xs bg-gray-50 border border-border rounded px-2 py-1">{job.schedule}</span>
                       <span className="font-mono text-xs bg-gray-50 border border-border rounded px-2 py-1">{job.command}</span>
                     </div>
 
@@ -533,6 +536,24 @@ function toJobName(command) {
     .replace(/\(\)/g, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (m) => m.toUpperCase())
+}
+
+function humanizeCron(cron) {
+  const value = String(cron || '').trim()
+  if (!value) return 'Not set'
+
+  if (value === '0 * * * *') return 'Every hour'
+  if (value === '0 9 * * *') return 'Daily at 9:00'
+  if (value === '0 9 * * 1') return 'Weekly on Monday at 9:00'
+  if (value === '0 9 * * 1-5') return 'Weekdays at 9:00'
+
+  let match = value.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/)
+  if (match) return `Every ${match[1]} minute${match[1] === '1' ? '' : 's'}`
+
+  match = value.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/)
+  if (match) return `Every ${match[1]} hour${match[1] === '1' ? '' : 's'}`
+
+  return value
 }
 
 export default Cron
