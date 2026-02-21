@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { MessageSquare, Send, RefreshCw, ArrowUpRight } from 'lucide-react'
+import { MessageSquare, Send, RefreshCw, ArrowUpRight, Activity } from 'lucide-react'
 import { getAgents, supabase } from '../utils/supabase'
 
 const STOCKTON_CHAT_WEBHOOK_URL =
@@ -39,6 +39,17 @@ function ChatArena() {
       })
       .subscribe()
     
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const subscription = supabase
+      .channel('agents-realtime-chat')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, () => {
+        loadAgents()
+      })
+      .subscribe()
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -189,6 +200,29 @@ function ChatArena() {
     }
   }
 
+  const workingAgents = useMemo(() => {
+    return (agents || [])
+      .filter((agent) => {
+        const status = String(agent?.status || '').toLowerCase()
+        const task = String(agent?.current_task || '').trim()
+        return status === 'busy' || task.length > 0
+      })
+      .sort((a, b) => {
+        const aBusy = String(a?.status || '').toLowerCase() === 'busy' ? 0 : 1
+        const bBusy = String(b?.status || '').toLowerCase() === 'busy' ? 0 : 1
+        if (aBusy !== bBusy) return aBusy - bBusy
+        return getAgentMentionLabel(a).localeCompare(getAgentMentionLabel(b), 'en', { sensitivity: 'base' })
+      })
+  }, [agents])
+
+  function getAgentStatusStyle(status) {
+    const normalized = String(status || '').toLowerCase()
+    if (normalized === 'busy') return 'bg-red-100 text-red-700 border-red-200'
+    if (normalized === 'active') return 'bg-green-100 text-green-700 border-green-200'
+    if (normalized === 'idle') return 'bg-yellow-100 text-yellow-700 border-yellow-200'
+    return 'bg-gray-100 text-gray-700 border-gray-200'
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -213,105 +247,146 @@ function ChatArena() {
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto bg-gray-50 rounded-xl border border-border p-4 space-y-4">
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>No messages yet. Start the conversation!</p>
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <div 
-              key={msg.id} 
-              className={`p-4 rounded-lg border relative ${getMessageStyle(msg.message_type)}`}
-            >
-              <button
-                type="button"
-                onClick={() => setReplyForMessage(msg)}
-                className="absolute top-3 right-3 p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                title={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
-                aria-label={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
-              >
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">{msg.agents?.emoji || '👤'}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-gray-900">
-                      {formatAgentDisplayName(msg.agents?.name || msg.agent_id)}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(msg.created_at).toLocaleTimeString()}
-                    </span>
-                    {msg.priority === 1 && (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Urgent</span>
-                    )}
-                  </div>
-                  
-                  <p className="text-gray-800">{msg.content}</p>
-                  
-                  {msg.context && Object.keys(msg.context).length > 0 && (
-                    <div className="mt-2 text-xs text-gray-500 bg-white/50 p-2 rounded">
-                      <pre>{JSON.stringify(msg.context, null, 2)}</pre>
-                    </div>
-                  )}
-                </div>
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8 xl:col-span-9 min-h-0 flex flex-col">
+          {/* Messages */}
+          <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50 rounded-xl border border-border p-4 space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No messages yet. Start the conversation!</p>
               </div>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`p-4 rounded-lg border relative ${getMessageStyle(msg.message_type)}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setReplyForMessage(msg)}
+                    className="absolute top-3 right-3 p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    title={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
+                    aria-label={`Reply to ${formatAgentDisplayName(msg.agents?.name || msg.agent_id || 'message')}`}
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{msg.agents?.emoji || '👤'}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-900">
+                          {formatAgentDisplayName(msg.agents?.name || msg.agent_id)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(msg.created_at).toLocaleTimeString()}
+                        </span>
+                        {msg.priority === 1 && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Urgent</span>
+                        )}
+                      </div>
 
-      {/* Agent quick mentions */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-gray-500 mr-1">Quick mentions:</span>
-        {sortedAgents.map((agent) => (
-          <button
-            key={agent.id}
-            type="button"
-            onClick={() => addMention(agent.id)}
-            className="text-xs px-2 py-1 rounded-full border border-border bg-white hover:bg-gray-100 text-gray-700"
-            title={`Mention ${agent.id}`}
-          >
-            {agent.emoji ? `${agent.emoji} ` : ''}@{getAgentMentionLabel(agent)}
-          </button>
-        ))}
-      </div>
+                      <p className="text-gray-800">{msg.content}</p>
 
-      {/* Input */}
-      <form onSubmit={sendMessage} className="mt-4 flex flex-col gap-2">
-        {replyTarget && (
-          <div className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-900">
-            <span>
-              Replying to <strong>{replyTarget.displayName}</strong>: "{replyTarget.preview}"
-            </span>
-            <button
-              type="button"
-              className="text-primary hover:underline"
-              onClick={() => setReplyTarget(null)}
-            >
-              Cancel
-            </button>
+                      {msg.context && Object.keys(msg.context).length > 0 && (
+                        <div className="mt-2 text-xs text-gray-500 bg-white/50 p-2 rounded">
+                          <pre>{JSON.stringify(msg.context, null, 2)}</pre>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
           </div>
-        )}
-        <div className="flex gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Send message to all agents..."
-          className="flex-1 input"
-        />
-        <button type="submit" className="btn-primary flex items-center gap-2">
-          <Send className="w-4 h-4" />
-          Send
-        </button>
+
+          {/* Agent quick mentions */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-500 mr-1">Quick mentions:</span>
+            {sortedAgents.map((agent) => (
+              <button
+                key={agent.id}
+                type="button"
+                onClick={() => addMention(agent.id)}
+                className="text-xs px-2 py-1 rounded-full border border-border bg-white hover:bg-gray-100 text-gray-700"
+                title={`Mention ${agent.id}`}
+              >
+                {agent.emoji ? `${agent.emoji} ` : ''}@{getAgentMentionLabel(agent)}
+              </button>
+            ))}
+          </div>
+
+          {/* Input */}
+          <form onSubmit={sendMessage} className="mt-4 flex flex-col gap-2">
+            {replyTarget && (
+              <div className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-900">
+                <span>
+                  Replying to <strong>{replyTarget.displayName}</strong>: "{replyTarget.preview}"
+                </span>
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setReplyTarget(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Send message to all agents..."
+                className="flex-1 input"
+              />
+              <button type="submit" className="btn-primary flex items-center gap-2">
+                <Send className="w-4 h-4" />
+                Send
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+
+        <aside className="lg:col-span-4 xl:col-span-3 min-h-0">
+          <div className="card h-full overflow-y-auto p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-gray-900">Agents Working Now</h3>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              {workingAgents.length} agent{workingAgents.length === 1 ? '' : 's'} currently running tasks
+            </p>
+
+            {workingAgents.length === 0 ? (
+              <div className="text-sm text-gray-500 bg-gray-50 border border-border rounded-lg p-3">
+                No agents are actively working right now.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {workingAgents.map((agent) => (
+                  <div key={agent.id} className="border border-border rounded-lg p-3 bg-white">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {agent.emoji ? `${agent.emoji} ` : ''}
+                        {formatAgentDisplayName(agent.name || agent.id)}
+                      </p>
+                      <span className={`text-[11px] px-2 py-0.5 rounded border capitalize ${getAgentStatusStyle(agent.status)}`}>
+                        {agent.status || 'active'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-700 mt-2">
+                      {String(agent.current_task || '').trim() || 'Working on assigned task'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   )
 }
