@@ -2,6 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { MessageSquare, Send, RefreshCw } from 'lucide-react'
 import { getAgents, supabase } from '../utils/supabase'
 
+const STOCKTON_CHAT_WEBHOOK_URL =
+  import.meta.env.VITE_STOCKTON_CHAT_WEBHOOK_URL ||
+  'https://n8n.anshdhawan.cloud/webhook/stockton-chat-input'
+
 function ChatArena() {
   const [messages, setMessages] = useState([])
   const [agents, setAgents] = useState([])
@@ -78,19 +82,57 @@ function ChatArena() {
     e.preventDefault()
     if (!input.trim()) return
 
+    const message = input.trim()
+    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const optimisticRow = {
+      id: optimisticId,
+      message_id: optimisticId,
+      content: message,
+      agent_id: 'ansh',
+      message_type: 'chat',
+      status: 'active',
+      created_at: new Date().toISOString(),
+      context: null,
+    }
+
+    setMessages((prev) => [...prev, optimisticRow])
+    setInput('')
+
     try {
-      await supabase
-        .from('chat_arena')
-        .insert({
-          agent_id: 'user',
-          message_type: 'chat',
-          content: input,
-          priority: 3
-        })
-      
-      setInput('')
+      const response = await fetch(STOCKTON_CHAT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          agent_id: 'ansh',
+          thread_id: 'stockton-chat',
+        }),
+      })
+
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(`Webhook error ${response.status}: ${body.slice(0, 200)}`)
+      }
+
+      const inserted = await response.json()
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === optimisticId
+            ? {
+                ...msg,
+                ...inserted,
+                agents: { name: 'ansh', emoji: '👤' },
+              }
+            : msg,
+        ),
+      )
     } catch (error) {
       console.error('Error sending message:', error)
+      // Remove optimistic row on failure so UI stays accurate.
+      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticId))
+      setInput(message)
     }
   }
 

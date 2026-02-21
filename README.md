@@ -1,40 +1,44 @@
-# Mission Control Dashboard
+# Stockton Dashboard
 
-A real-time dashboard for monitoring the Apex Collective agent swarm.
+Real-time dashboard for tasks, agents, cron jobs, workflows, and chat.
 
-## Features
-
-- **Agent Status**: See all 5 agents (Ramon, Scales, Viper, Webber, Forge) with their current load and status
-- **Task Queue**: View pending, in-progress, and completed tasks
-- **Today's Progress**: Track what the team accomplished today
-- **Project Overview**: Current phase, blockers, and recent decisions
-- **Activity Feed**: Real-time updates from the agent swarm
-
-## Tech Stack
+## Stack
 
 - React 18
-- Tailwind CSS
 - Vite
-- Lucide React (icons)
+- Tailwind CSS
+- Supabase (data + realtime)
+- n8n (chat ingress + automation)
 
-## Data Sources
-
-The dashboard reads from the shared workspace:
-- `project_master.md` - Project goals and phase
-- `status_board.md` - Agent statuses and updates
-- `work_queue.md` - Task backlog
-- `decisions_log.md` - Recent decisions
-
-## Development
+## Local Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Deployment
+## Chat Send Flow
+
+The `/chat` Send button now writes through n8n (not direct Supabase insert):
+
+- Frontend `POST` -> `https://n8n.anshdhawan.cloud/webhook/stockton-chat-input`
+- n8n inserts into `public.chat_arena`
+- existing DB triggers route `@agent` mentions
+
+This keeps chat writes consistent with your n8n agent orchestration.
+
+## Optional Environment Variables
+
+Create `.env` (or `.env.local`) to override the webhook:
+
+```bash
+VITE_STOCKTON_CHAT_WEBHOOK_URL=https://n8n.anshdhawan.cloud/webhook/stockton-chat-input
+```
+
+If unset, the app defaults to that URL.
+
+## Build
 
 ```bash
 npm run build
-# Deploy dist/ to GitHub Pages
 ```
