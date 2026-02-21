@@ -224,7 +224,7 @@ function getAgentMentionLabel(agent) {
       .replace(/^[^A-Za-z0-9]+/, '')
       .split(' - ')[0]
       .trim()
-    if (cleaned) return cleaned
+    if (cleaned) return toTitleCase(cleaned.toLowerCase())
   }
   return toTitleCase(String(agent?.id || 'agent'))
 }
