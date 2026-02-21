@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { MessageSquare, Send, RefreshCw } from 'lucide-react'
 import { getAgents, supabase } from '../utils/supabase'
 
@@ -9,6 +9,15 @@ function ChatArena() {
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const sortedAgents = useMemo(() => {
+    return [...agents].sort((a, b) => {
+      const aLabel = getAgentMentionLabel(a)
+      const bLabel = getAgentMentionLabel(b)
+      const byLabel = aLabel.localeCompare(bLabel, 'en', { sensitivity: 'base' })
+      if (byLabel !== 0) return byLabel
+      return String(a.id || '').localeCompare(String(b.id || ''), 'en', { sensitivity: 'base' })
+    })
+  }, [agents])
 
   useEffect(() => {
     loadData()
@@ -59,11 +68,7 @@ function ChatArena() {
   async function loadAgents() {
     try {
       const data = await getAgents()
-      const filtered = (data || []).filter((agent) => agent.id && agent.id !== 'ansh')
-      filtered.sort((a, b) =>
-        getAgentMentionLabel(a).localeCompare(getAgentMentionLabel(b), undefined, { sensitivity: 'base' }),
-      )
-      setAgents(filtered)
+      setAgents((data || []).filter((agent) => agent.id && agent.id !== 'ansh'))
     } catch (error) {
       console.error('Error loading agents:', error)
     }
@@ -185,7 +190,7 @@ function ChatArena() {
       {/* Agent quick mentions */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-gray-500 mr-1">Quick mentions:</span>
-        {agents.map((agent) => (
+        {sortedAgents.map((agent) => (
           <button
             key={agent.id}
             type="button"
