@@ -59,7 +59,11 @@ function ChatArena() {
   async function loadAgents() {
     try {
       const data = await getAgents()
-      setAgents((data || []).filter((agent) => agent.id && agent.id !== 'ansh'))
+      const filtered = (data || []).filter((agent) => agent.id && agent.id !== 'ansh')
+      filtered.sort((a, b) =>
+        getAgentMentionLabel(a).localeCompare(getAgentMentionLabel(b), undefined, { sensitivity: 'base' }),
+      )
+      setAgents(filtered)
     } catch (error) {
       console.error('Error loading agents:', error)
     }
