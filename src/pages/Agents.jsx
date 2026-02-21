@@ -174,13 +174,10 @@ function Agents() {
               )}
             </div>
 
-            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100 flex gap-2">
-              <button className="flex-1 text-xs bg-primary-50 hover:bg-primary-100 text-primary py-2 rounded">
-                Logs
-              </button>
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100">
               <button
                 onClick={() => openMdEditor(agent)}
-                className="flex-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded"
+                className="w-full text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded"
               >
                 Edit .md
               </button>
