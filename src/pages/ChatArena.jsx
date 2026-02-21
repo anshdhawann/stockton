@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare, Send, RefreshCw } from 'lucide-react'
-import { supabase } from '../utils/supabase'
+import { getAgents, supabase } from '../utils/supabase'
 
 function ChatArena() {
   const [messages, setMessages] = useState([])
+  const [agents, setAgents] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
-    loadMessages()
+    loadData()
     
     // Subscribe to new messages
     const subscription = supabase
@@ -42,8 +44,24 @@ function ChatArena() {
       setMessages(data || [])
     } catch (error) {
       console.error('Error loading messages:', error)
+    }
+  }
+
+  async function loadData() {
+    try {
+      setLoading(true)
+      await Promise.all([loadMessages(), loadAgents()])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadAgents() {
+    try {
+      const data = await getAgents()
+      setAgents((data || []).filter((agent) => agent.id && agent.id !== 'ansh'))
+    } catch (error) {
+      console.error('Error loading agents:', error)
     }
   }
 
@@ -65,6 +83,17 @@ function ChatArena() {
     } catch (error) {
       console.error('Error sending message:', error)
     }
+  }
+
+  function addMention(agentId) {
+    const mention = `@${agentId}`
+    setInput((prev) => {
+      const value = prev.trim()
+      if (!value) return `${mention} `
+      const needsSpace = /\s$/.test(prev)
+      return `${prev}${needsSpace ? '' : ' '}${mention} `
+    })
+    inputRef.current?.focus()
   }
 
   const getMessageStyle = (type) => {
@@ -98,7 +127,7 @@ function ChatArena() {
           <p className="text-gray-500 mt-1">Real-time agent communication</p>
         </div>
         <button 
-          onClick={loadMessages}
+          onClick={loadData}
           className="btn-secondary flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
@@ -149,9 +178,26 @@ function ChatArena() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Agent quick mentions */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-gray-500 mr-1">Quick mentions:</span>
+        {agents.map((agent) => (
+          <button
+            key={agent.id}
+            type="button"
+            onClick={() => addMention(agent.id)}
+            className="text-xs px-2 py-1 rounded-full border border-border bg-white hover:bg-gray-100 text-gray-700"
+            title={`Mention ${agent.id}`}
+          >
+            {agent.emoji ? `${agent.emoji} ` : ''}@{agent.id}
+          </button>
+        ))}
+      </div>
+
       {/* Input */}
       <form onSubmit={sendMessage} className="mt-4 flex gap-2">
         <input
+          ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
